@@ -1,0 +1,9 @@
+docker compose up -d
+
+python init_db.py
+
+curl.exe -i -X POST http://localhost:8083/connectors -H "Content-Type: application/json" --data "@postgres-connector.json"
+
+docker compose restart spark-app
+
+docker logs -f spark-app

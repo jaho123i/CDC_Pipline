@@ -1,0 +1,23 @@
+{
+  "name": "pg-customers-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "app",
+    "database.password": "app",
+    "database.dbname": "appdb",
+    "plugin.name": "pgoutput",
+    "topic.prefix": "pg",
+    "publication.autocreate.mode": "filtered",
+    "slot.name": "pg_slot_customers",
+    "schema.include.list": "demo",
+    "table.include.list": "demo.customers",
+    "tombstones.on.delete": "false",
+    "decimal.handling.mode": "string",
+    "time.precision.mode": "adaptive_time_microseconds",
+    "heartbeat.interval.ms": "3000",
+    "poll.interval.ms": "1000"
+  }
+}
