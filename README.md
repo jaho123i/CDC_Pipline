@@ -17,6 +17,32 @@ Projekt wdraża architekturę Change Data Capture (CDC) do przetwarzania strumie
 * `postgres-connector.json` - Plik konfiguracyjny (payload) dla konektora Debezium.
 * `spark/app/stream_job.py` - Aplikacja analityczna realizująca transformację zagnieżdżonych struktur JSON na format kolumnowy.
 
+```mermaid
+graph LR
+    %% Zewnętrzny skrypt generujący ruch
+    INIT([init_db.py]) -. "Generuje transakcje" .-> DB
+
+    %% Główna infrastruktura w Dockerze
+    subgraph "Środowisko Docker Compose"
+        DB[(PostgreSQL 15<br/>Baza operacyjna)]
+        CDC[Debezium<br/>Konektor CDC]
+        KAFKA{{Apache Kafka<br/>Szyna danych}}
+        SPARK[Apache Spark<br/>PySpark]
+        MINIO[(MinIO<br/>Data Lake)]
+    end
+
+    %% Połączenia między węzłami
+    DB -- "Logi WAL<br/>(pgoutput)" --> CDC
+    CDC -- "Zdarzenia zmian<br/>(JSON)" --> KAFKA
+    KAFKA -- "Strumień danych" --> SPARK
+    SPARK -- "Zapis analityczny<br/>(format .parquet)" --> MINIO
+
+    %% Subtelne stylowanie (opcjonalne)
+    style INIT fill:#f9f,stroke:#333,stroke-width:2px
+    style DB fill:#33b5e5,stroke:#0099cc,color:#fff
+    style MINIO fill:#ffbb33,stroke:#ff8800,color:#fff
+```
+
 ## Wymagania wstępne
 * Docker Desktop 
 * Python 3.x z zainstalowanymi bibliotekami klienckimi bazy danych
@@ -55,28 +81,3 @@ Otwórz interfejs przeglądarkowy MinIO i przejdź do wiadra `datalake`. W katal
 ```bash
 docker compose down -v
 ```
-
-```mermaid
-graph LR
-    %% Zewnętrzny skrypt generujący ruch
-    INIT([init_db.py]) -. "Generuje transakcje" .-> DB
-
-    %% Główna infrastruktura w Dockerze
-    subgraph "Środowisko Docker Compose"
-        DB[(PostgreSQL 15<br/>Baza operacyjna)]
-        CDC[Debezium<br/>Konektor CDC]
-        KAFKA{{Apache Kafka<br/>Szyna danych}}
-        SPARK[Apache Spark<br/>PySpark]
-        MINIO[(MinIO<br/>Data Lake)]
-    end
-
-    %% Połączenia między węzłami
-    DB -- "Logi WAL<br/>(pgoutput)" --> CDC
-    CDC -- "Zdarzenia zmian<br/>(JSON)" --> KAFKA
-    KAFKA -- "Strumień danych" --> SPARK
-    SPARK -- "Zapis analityczny<br/>(format .parquet)" --> MINIO
-
-    %% Subtelne stylowanie (opcjonalne)
-    style INIT fill:#f9f,stroke:#333,stroke-width:2px
-    style DB fill:#33b5e5,stroke:#0099cc,color:#fff
-    style MINIO fill:#ffbb33,stroke:#ff8800,color:#fff
