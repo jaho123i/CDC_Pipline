@@ -1,83 +1,79 @@
 # Real-Time CDC Data Pipeline
 
-## Opis projektu
-Projekt wdraża architekturę Change Data Capture (CDC) do przetwarzania strumieniowego w czasie rzeczywistym. Rejestruje zmiany w relacyjnej bazie operacyjnej i automatycznie buduje analityczny magazyn danych (Data Lake) przy użyciu formatu Parquet, zapewniając zerowe obciążenie dla aplikacji biznesowej.
+## Project Description
+This project implements a Change Data Capture (CDC) architecture for real-time stream processing. It captures changes from a relational operational database and automatically builds an analytical Data Lake using the Parquet format, ensuring zero performance impact on the business application.
 
-## Architektura i technologie
-* **PostgreSQL 15:** Baza operacyjna z włączoną replikacją logiczną (`pgoutput`).
-* **Debezium:** Narzędzie CDC wychwytujące transakcje bezpośrednio z dziennika WAL bazy.
-* **Apache Kafka:** Rozproszona szyna danych buforująca zdarzenia (skonfigurowana w trybie KRaft).
-* **Apache Spark (PySpark):** Klaster analityczny agregujący dane w trybie Structured Streaming.
-* **MinIO:** Lokalny, obiektowy magazyn danych (kompatybilny z Amazon S3) służący jako docelowy Data Lake.
-* **Docker Compose:** Orkiestracja i konteneryzacja całego środowiska.
+## Architecture and Technologies
+* **PostgreSQL 15:** Operational database with logical replication enabled (`pgoutput`).
+* **Debezium:** CDC tool capturing transactions directly from the database's WAL (Write-Ahead Log).
+* **Apache Kafka:** Distributed data bus buffering events (configured in KRaft mode).
+* **Apache Spark (PySpark):** Analytical cluster aggregating data using Structured Streaming.
+* **MinIO:** Local object storage (Amazon S3 compatible) serving as the target Data Lake.
+* **Docker Compose:** Orchestration and containerization of the entire environment.
 
-## Struktura projektu
-* `docker-compose.yml` - Definicja infrastruktury i sieci.
-* `init_db.py` - Skrypt startowy w Pythonie generujący ruch biznesowy.
-* `postgres-connector.json` - Plik konfiguracyjny (payload) dla konektora Debezium.
-* `spark/app/stream_job.py` - Aplikacja analityczna realizująca transformację zagnieżdżonych struktur JSON na format kolumnowy.
+## Project Structure
+* `docker-compose.yml` - Infrastructure and network definition.
+* `init_db.py` - Python startup script generating business traffic.
+* `postgres-connector.json` - Configuration file (payload) for the Debezium connector.
+* `spark/app/stream_job.py` - Analytical application transforming nested JSON structures into a columnar format.
 
 ```mermaid
 graph LR
-    %% Zewnętrzny skrypt generujący ruch
-    INIT([init_db.py]) -. "Generuje transakcje" .-> DB
+    INIT([init_db.py]) -. "Generates transactions" .-> DB
 
-    %% Główna infrastruktura w Dockerze
-    subgraph "Środowisko Docker Compose"
-        DB[(PostgreSQL 15<br/>Baza operacyjna)]
-        CDC[Debezium<br/>Konektor CDC]
-        KAFKA{{Apache Kafka<br/>Szyna danych}}
+    subgraph "Docker Compose Environment"
+        DB[(PostgreSQL 15<br/>Operational Database)]
+        CDC[Debezium<br/>CDC Connector]
+        KAFKA{{Apache Kafka<br/>Data Bus}}
         SPARK[Apache Spark<br/>PySpark]
         MINIO[(MinIO<br/>Data Lake)]
     end
 
-    %% Połączenia między węzłami
-    DB -- "Logi WAL<br/>(pgoutput)" --> CDC
-    CDC -- "Zdarzenia zmian<br/>(JSON)" --> KAFKA
-    KAFKA -- "Strumień danych" --> SPARK
-    SPARK -- "Zapis analityczny<br/>(format .parquet)" --> MINIO
+    DB -- "WAL Logs<br/>(pgoutput)" --> CDC
+    CDC -- "Change Events<br/>(JSON)" --> KAFKA
+    KAFKA -- "Data Stream" --> SPARK
+    SPARK -- "Analytical Write<br/>(.parquet format)" --> MINIO
 
-    %% Subtelne stylowanie (opcjonalne)
     style INIT fill:#f9f,stroke:#333,stroke-width:2px
     style DB fill:#33b5e5,stroke:#0099cc,color:#fff
     style MINIO fill:#ffbb33,stroke:#ff8800,color:#fff
 ```
 
-## Wymagania wstępne
+## Prerequisites
 * Docker Desktop 
-* Python 3.x z zainstalowanymi bibliotekami klienckimi bazy danych
+* Python 3.x with database client libraries installed
 
-## Instrukcja uruchomienia
+## Setup Instructions
 
-### 1. Uruchomienie infrastruktury
+### 1. Start the Infrastructure
 ```bash
 docker compose up -d
 ```
 
-### 2. Konfiguracja Data Lake
-W przeglądarce otwórz adres `http://localhost:9001` (użytkownik: `admin`, hasło: `password123`). 
-Utwórz nowe wiadro (Bucket) o nazwie `datalake`.
+### 2. Configure the Data Lake
+Open `http://localhost:9001` in your browser (username: `admin`, password: `password123`). 
+Create a new bucket named `datalake`.
 
-### 3. Generowanie danych startowych
+### 3. Generate Initial Data
 ```bash
 python init_db.py
 ```
 
-### 4. Uruchomienie śledzenia zmian (Debezium)
+### 4. Start Change Data Capture (Debezium)
 ```bash
 curl.exe -i -X POST http://localhost:8083/connectors -H "Content-Type: application/json" --data "@postgres-connector.json"
 ```
 
-### 5. Aktywacja silnika analitycznego (Spark)
+### 5. Activate the Analytics Engine (Spark)
 ```bash
 docker compose restart spark-app
 docker logs -f spark-app
 ```
 
-## Weryfikacja działania
-Otwórz interfejs przeglądarkowy MinIO i przejdź do wiadra `datalake`. W katalogu `customers/raw/` znajdziesz skompresowane pliki `.parquet`. Każde kolejne wywołanie skryptu `init_db.py` doda do tej lokalizacji nową paczkę przetworzonych danych po upływie zdefiniowanego interwału (10 sekund).
+## Verification
+Open the MinIO web interface and navigate to the `datalake` bucket. Inside the `customers/raw/` directory, you will find the compressed `.parquet` files. Each subsequent execution of the `init_db.py` script will add a new batch of processed data to this location after the defined interval (10 seconds).
 
-## Wyłączenie i czyszczenie środowiska
+## Teardown and Cleanup
 ```bash
 docker compose down -v
 ```
