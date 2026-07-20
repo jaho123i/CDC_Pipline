@@ -2,7 +2,6 @@ import uuid
 
 import psycopg2
 
-# Konfiguracja
 conn_params = {
     "host": "localhost",
     "port": 5432,
@@ -14,7 +13,6 @@ conn_params = {
 
 def init_database():
     try:
-        # Połączenie
         conn = psycopg2.connect(**conn_params)
         cursor = conn.cursor()
 
